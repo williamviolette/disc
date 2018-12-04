@@ -2,17 +2,11 @@
 
 set more off
 
-
-global run_local = 1
-
-if ${run_local} == 1 {
-	cd "/Volumes/GoogleDrive/My Drive/utility_health/"
-}
-
+global loc =  "/Volumes/GoogleDrive/My Drive/disc_data/"
 
 foreach year in 2011 2012 2013 2014 2015 2016 2018 {
 
-import delimited using "data/raw/dc_policy/dc_table_`year'.txt",  clear
+import delimited using "${loc}raw/dc_policy/dc_table_`year'.txt",  clear
 
 
 global NN=_N
@@ -144,7 +138,7 @@ replace temp_t = "<32° (daytime), <20° F (night) or >103° F" if state=="Oklah
 
 g year = `year'
 
-save "data/input/dc_`year'.dta", replace
+save "${loc}input/dc_`year'.dta", replace
 
 }
 

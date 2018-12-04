@@ -3,15 +3,12 @@
 
 set more off
 
-global run_local = 1
-
-if ${run_local} == 1 {
-	cd "/Volumes/GoogleDrive/My Drive/utility_health/"
-}
+global loc =  "/Volumes/GoogleDrive/My Drive/disc_data/"
 
 
 
-use "data/input/dc_total.dta", clear
+
+use "${loc}input/dc_total.dta", clear
 
 *** CLEAN COLD 
 
@@ -41,7 +38,7 @@ destring m_end d_end, replace force
 order state year temp m_start d_start m_end d_end
 keep state year temp m_start d_start m_end d_end
 
-save "data/input/dc_cold.dta", replace  
+save "${loc}input/dc_cold.dta", replace  
 
 
 

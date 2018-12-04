@@ -2,20 +2,14 @@
 
 
 
-
 set more off
 
-global run_local = 1
-
-if ${run_local} == 1 {
-	cd "/Volumes/GoogleDrive/My Drive/utility_health/"
-}
-
-
+global dataloc =  "/Volumes/GoogleDrive/My Drive/disc_data/"
+global loc = "/Users/williamviolette/disc/"
 global temp = "output/"
 
 
-use "data/temp/full_data_test.dta", clear
+use "${dataloc}temp/full_data_test.dta", clear
 
 egen f = max(temp), by(STATE)
 
@@ -31,7 +25,7 @@ areg deaths MIN_tmin_med i.YEAR i.WEEKDAY i.MONTH, a(S)
 
 **** FIRST IDEA :  TEMPERATURE GRADIENT FOR TREATED AND UNTREATED STATES (focus on 32 degrees)
 
-use "data/temp/full_data_test.dta", clear
+use "${dataloc}temp/full_data_test.dta", clear
 
 egen f = max(temp), by(STATE)
 
@@ -72,9 +66,9 @@ program define graph_trend2
 
 		xi: qui areg deaths *_no *_yes i.YEAR*i.MONTH i.WEEKDAY, absorb(STATE) cluster(STATE) r 
 	   	parmest, fast
-	   		save "${temp}temp_est.dta", replace
+	   		save "${loc}${temp}temp_est.dta", replace
 
-	   		use "${temp}temp_est.dta", clear
+	   		use "${loc}${temp}temp_est.dta", clear
 				g time = _n
 	   			keep if time<=`=`time''	   		
 	   			replace time = time + `=`time_min''
@@ -82,9 +76,9 @@ program define graph_trend2
 	   			ren estimate estimate_no
 	   			ren max95 max95_no 
 	   			ren min95 min95_no
-	   		save "${temp}temp_est_no.dta", replace
+	   		save "${loc}${temp}temp_est_no.dta", replace
 
-	   		use "${temp}temp_est.dta", clear
+	   		use "${loc}${temp}temp_est.dta", clear
 				g time = _n
 	   			drop if time<=`=`time''
 	   			drop time
@@ -96,7 +90,7 @@ program define graph_trend2
 	   			ren max95 max95_yes 
 	   			ren min95 min95_yes
 	   		
-	   			merge 1:1 time using "${temp}temp_est_no.dta"
+	   			merge 1:1 time using "${loc}${temp}temp_est_no.dta"
 	   			drop _merge
 
 	   	lab var time "Time"
@@ -109,9 +103,9 @@ program define graph_trend2
     	|| (line min95_yes time, lcolor(green) lpattern(dash) lwidth(med)), ///
     	 graphregion(color(gs16)) plotregion(color(gs16)) xlabel(`=-${M}'(2)`=${M}') ///
     	 ytitle("deaths")
-    	 graph export  "${temp}trend2.pdf", as(pdf) replace
-    	 erase "${temp}temp_est.dta"
-    	 erase "${temp}temp_est_no.dta"
+    	 graph export  "${loc}${temp}trend2.pdf", as(pdf) replace
+    	 erase "${loc}${temp}temp_est.dta"
+    	 erase "${loc}${temp}temp_est_no.dta"
     restore
 end
 
