@@ -5,6 +5,13 @@
 
 ** how bout these branches?!
 
+
+** set location: ( also can run setlocation.do )
+global loc =  "/Volumes/GoogleDrive/My Drive/disc_data/" // for will
+* global loc =  " " // for adrian
+
+
+
 ** control panel 
 
 global import_dc_1_   == 0
@@ -62,7 +69,7 @@ if $analysis_3_ == 1 {
 	* 3) get more specific with policies for particular utilities
 	* 4) look at demographic heterogeneity... of course...
 	* 5) find other daily health data (hospital discharge data?)
-
+	* 6) google trends, first stage stuff
 
 
 

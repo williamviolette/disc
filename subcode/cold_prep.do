@@ -3,7 +3,7 @@
 
 set more off
 
-global loc =  "/Volumes/GoogleDrive/My Drive/disc_data/"
+* global loc =  "/Volumes/GoogleDrive/My Drive/disc_data/"
 
 
 

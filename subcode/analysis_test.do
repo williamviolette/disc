@@ -6,13 +6,11 @@ set more off
 set matsize 10000
 
 
-
-global dataloc =  "/Volumes/GoogleDrive/My Drive/disc_data/"
-global loc = "../../"
+global discfile = "../../"
 global temp = "output/"
 
 
-use "${dataloc}temp/full_data_test.dta", clear
+use "${loc}temp/full_data_test.dta", clear
 
 egen f = max(temp), by(STATE)
 
@@ -28,7 +26,7 @@ areg deaths MIN_tmin_med i.YEAR i.WEEKDAY i.MONTH, a(S)
 
 **** FIRST IDEA :  TEMPERATURE GRADIENT FOR TREATED AND UNTREATED STATES (focus on 32 degrees)
 
-use "${dataloc}temp/full_data_test.dta", clear
+use "${loc}temp/full_data_test.dta", clear
 
 egen f = max(temp), by(STATE)
 
@@ -71,9 +69,9 @@ program define graph_trend2
 		* i.full_date
 		areg deaths *_no *_yes i.YEAR i.MONTH i.WEEKDAY, absorb(STATE) cluster(STATE) r 
 	   	parmest, fast
-	   		save "${loc}${temp}temp_est.dta", replace
+	   		save "${discfile}${temp}temp_est.dta", replace
 
-	   		use "${loc}${temp}temp_est.dta", clear
+	   		use "${discfile}${temp}temp_est.dta", clear
 				keep if regexm(parm,"_no")==1
 				g time = _n
 	   			keep if time<=`=`time''	   		
@@ -82,9 +80,9 @@ program define graph_trend2
 	   			ren estimate estimate_no
 	   			ren max95 max95_no 
 	   			ren min95 min95_no
-	   		save "${loc}${temp}temp_est_no.dta", replace
+	   		save "${discfile}${temp}temp_est_no.dta", replace
 
-	   		use "${loc}${temp}temp_est.dta", clear
+	   		use "${discfile}${temp}temp_est.dta", clear
 				keep if regexm(parm,"_yes")==1
 	   			g time = _n
 	   			keep if time<=`=`time''   		
@@ -94,7 +92,7 @@ program define graph_trend2
 	   			ren max95 max95_yes 
 	   			ren min95 min95_yes
 	   		
-	   			merge 1:1 time using "${loc}${temp}temp_est_no.dta"
+	   			merge 1:1 time using "${discfile}${temp}temp_est_no.dta"
 	   			drop _merge
 
 	   	lab var time "Time"
@@ -107,9 +105,9 @@ program define graph_trend2
     	|| (line min95_yes time, lcolor(green) lpattern(dash) lwidth(med)), ///
     	 graphregion(color(gs16)) plotregion(color(gs16)) xlabel(`=-${M}'(2)`=${M}') ///
     	 ytitle("deaths")
-    	 graph export  "${loc}${temp}trend2.pdf", as(pdf) replace
-    	 erase "${loc}${temp}temp_est.dta"
-    	 erase "${loc}${temp}temp_est_no.dta"
+    	 graph export  "${discfile}${temp}trend2.pdf", as(pdf) replace
+    	 erase "${discfile}${temp}temp_est.dta"
+    	 erase "${discfile}${temp}temp_est_no.dta"
     restore
 end
 
@@ -127,7 +125,7 @@ graph_trend2
 
 **** SECOND IDEA :  GRADIENTS OVER TIME..
 
-use "${dataloc}temp/full_data_test.dta", clear
+use "${loc}temp/full_data_test.dta", clear
 
 egen f = max(temp), by(STATE)
 egen m_s_max=max(m_start), by(STATE)
@@ -184,7 +182,7 @@ program define graph_trend
     	|| (line min95 time, lcolor(blue) lpattern(dash) lwidth(med)), ///
     	 graphregion(color(gs16)) plotregion(color(gs16)) xlabel(`=`T_low''(2)`=`T_high'') ///
     	 ytitle("`outcome'") xline(0)
-    	 graph export  "${loc}${temp}trend2_`2'.pdf", as(pdf) replace
+    	 graph export  "${discfile}${temp}trend2_`2'.pdf", as(pdf) replace
    	restore
 end
 
