@@ -1,7 +1,7 @@
 
 set more off
 
-global loc =  "/Volumes/GoogleDrive/My Drive/disc_data/"
+* global loc =  "/Volumes/GoogleDrive/My Drive/disc_data/"
 
 
 foreach year in 2004 2005 2006 2007 2008 2009 {
