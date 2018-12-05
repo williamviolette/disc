@@ -2,13 +2,13 @@
 
 ** control panel 
 
-global _1_import_dc   == 0
-global _2_import_temp == 0
-global _3_analysis    == 0
+global import_dc_1_   == 0
+global import_temp_2_ == 0
+global analysis_3_    == 0
 
 
 ** (1) import disconnection policy tables
-if $_1_import_dc == 1 {
+if $import_dc_1_ == 1 {
 
 	do "subcode/import_dc_tables_2004_2009.do"
 	do "subcode/import_dc_tables_2011_2016.do"
@@ -20,7 +20,7 @@ if $_1_import_dc == 1 {
 
 
 ** (2) import temperature 
-if $_2_import_temp == 1 {
+if $import_temp_2_ == 1 {
 	do "subcode/import_temperature.do"
 		* the data is on my computer because its really big
 		* if we find that we want to keep cleaning it, then I can trim it and put it in the data folder
@@ -29,7 +29,7 @@ if $_2_import_temp == 1 {
 
 
 ** (3) quick test analysis
-if $_3_analysis == 1 {
+if $analysis_3_ == 1 {
 	do "subcode/analysis_test_prep.do"
 		* prepares the data for the analysis
 			* cleans the WONDER health data here,
