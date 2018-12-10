@@ -1,7 +1,7 @@
 
 ** set location: ( also can run setlocation.do )
 global loc =  "/Volumes/GoogleDrive/My Drive/disc_data/" // for will
-* global loc =  "/Users/adrian/Google Drive/disc_data" // for adrian
+* global loc =  "/Users/adrian/Google Drive/disc_data/" // for adrian
 
 
 
