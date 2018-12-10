@@ -1,14 +1,7 @@
 
-*** HOLI WILLITO
-*** HOLI!!!!!!!! :))
-
-
-** how bout these branches?!
-
-
 ** set location: ( also can run setlocation.do )
 global loc =  "/Volumes/GoogleDrive/My Drive/disc_data/" // for will
-* global loc =  " " // for adrian
+* global loc =  "/Users/adrian/Google Drive/disc_data" // for adrian
 
 
 
