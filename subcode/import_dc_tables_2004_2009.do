@@ -10,7 +10,7 @@ import delimited using "${loc}raw/dc_policy/dc_table_`year'.txt", delimiter(tab)
 
 drop v2
 
-g S=0 // gets 2 for virginia
+g S=0 // gets 2 for virginia --> I don't see 2 matches for Virginia...
 replace S=1 if regexm(v1,"Alabama")==1 
 replace S=1 if regexm(v1,"Alaska")==1
 replace S=1 if regexm(v1,"Arizona")==1

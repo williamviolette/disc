@@ -19,7 +19,60 @@ egen m_e_max=max(m_end), by(STATE)
 
 egen S = group(STATE)
 
-areg deaths MIN_tmin_med i.YEAR i.WEEKDAY i.MONTH, a(S)
+* a few graphical explorations of the raw relationship between temperature and deaths:
+
+	preserve
+	g mytemp=round(MIN_tmin_med)
+	collapse (sum) deaths, by(mytemp)
+	replace deaths=deaths/1000
+	tw (scatter deaths mytemp), xli(32, lc(gs8) lp(dash)) xlab(-50 0 32 "32ºF" 50 100) legend(off) xti("Minimum temperature") yti("Deaths, 1000s")
+	graph export  "${discfile}${temp}raw_mintemp_deaths.pdf", as(pdf) replace
+	restore
+
+	preserve
+	g mytemp=round(MEAN_tmin_mean)
+	collapse (sum) deaths, by(mytemp)
+	replace deaths=deaths/1000
+	tw (scatter deaths mytemp), xli(32, lc(gs8) lp(dash)) xlab(-50 0 32 "32ºF" 50 100) legend(off) xti("Mean temperature") yti("Deaths, 1000s")
+	graph export  "${discfile}${temp}raw_mintemp_deaths2.pdf", as(pdf) replace
+	restore
+
+	preserve
+	drop if MONTH>4 & MONTH<11
+	g mytemp=round(MIN_tmin_med)
+	collapse (sum) deaths, by(mytemp)
+	replace deaths=deaths/1000
+	tw (scatter deaths mytemp), xli(32, lc(gs8) lp(dash)) xlab(-50 0 32 "32ºF" 50 100) legend(off) xti("Minimum temperature") yti("Deaths, 1000s") note("Note: Restricting to data from Nov-Apr.")
+	graph export  "${discfile}${temp}raw_mintemp_deaths3.pdf", as(pdf) replace
+	restore
+	
+	preserve
+	drop if MONTH>4 & MONTH<11
+	g mytemp=round(MIN_tmin_med)
+	collapse (sum) deaths, by(mytemp STATE)
+	replace deaths=deaths/1000
+	sort STATE
+	egen s=group(STATE)
+	scatter deaths mytemp if s<25, by(STATE) xli(32, lc(gs8) lp(dash)) xlab(-50 0 32 "32ºF" 50 100) ylab(0 100 200) legend(off) xti("Minimum temperature") yti("Deaths, 1000s") note("Note: Restricting to data from Nov-Apr.")
+	graph export  "${discfile}${temp}raw_mintemp_deaths4.pdf", as(pdf) replace
+	scatter deaths mytemp if s>=25, by(STATE) xli(32, lc(gs8) lp(dash)) xlab(-50 0 32 "32ºF" 50 100) ylab(0 100 200) legend(off) xti("Minimum temperature") yti("Deaths, 1000s") note("Note: Restricting to data from Nov-Apr.")
+	graph export  "${discfile}${temp}raw_mintemp_deaths5.pdf", as(pdf) replace
+	restore 
+	
+	
+* initial explorations of relationship between temperature and deaths in regression form:
+
+	egen YM=group(YEAR MONTH)
+
+	reg deaths MIN_tmin_med // positive relationship: opposite of what we expect!
+	reg deaths MIN_tmin_med i.MONTH i.YEAR // positive relationship
+	reg deaths MIN_tmin_med i.YM // positive relationship
+	areg deaths MIN_tmin_med, a(STATE) // with state FE it becomes negative!
+	areg deaths MIN_tmin_med i.YEAR i.MONTH, a(S) // smaller magnitude but still neg
+	areg deaths MIN_tmin_med i.YM, a(S) // smaller magnitude but still neg
+	areg deaths MIN_tmin_med i.YM if MONTH<5 | MONTH>10, a(S) // restrict to Nov-Apr (coldest 6 months), same results larger coef
+
+	areg deaths MIN_tmin_med i.YEAR i.WEEKDAY i.MONTH, a(S)
 
 
 
