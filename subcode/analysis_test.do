@@ -19,14 +19,27 @@ egen m_e_max=max(m_end), by(STATE)
 
 egen S = group(STATE)
 
+* first, just time trends of deaths and temperature
+preserve
+collapse (sum) deaths (mean) MIN_tmin_med MEAN_tmin_med, by(YEAR MONTH)
+tostring YEAR, g(y)
+tostring MONTH, g(m)
+egen d=concat(y m), punct(-)
+g date=monthly(d, "YM")
+format date %tmMonCCYY
+replace deaths=deaths/1000
+tw (line deaths date, lw(thick)) (line MIN_tmin_med date, yaxis(2)) (line MEAN_tmin_med date, yaxis(2)), xti("") yti("Deaths, 1000s", axis(1)) yti("Temperature", axis(2)) legend(order(1 "Deaths" 2 "Min" 3 "Mean") r(1)) xlab(492 528 564 600 636 672)
+graph export  "${discfile}${temp}trends_temp_deaths.pdf", as(pdf) replace
+restore
+
 * a few graphical explorations of the raw relationship between temperature and deaths:
 
 	preserve
 	g mytemp=round(MIN_tmin_med)
-	collapse (sum) deaths, by(mytemp)
+	g counter=1
+	collapse (sum) deaths counter, by(mytemp)
 	replace deaths=deaths/1000
-	tw (scatter deaths mytemp), xli(32, lc(gs8) lp(dash)) xlab(-50 0 32 "32ºF" 50 100) legend(off) xti("Minimum temperature") yti("Deaths, 1000s")
-	graph export  "${discfile}${temp}raw_mintemp_deaths.pdf", as(pdf) replace
+	tw (scatter deaths mytemp) (scatter counter mytemp, msize(vsmall)), xli(32, lc(gs8) lp(dash)) xlab(-50 0 32 "32ºF" 50 100) xti("Minimum temperature") yti("") legend(order(1 "Deaths, 1000s" 2 "Frequency"))	graph export  "${discfile}${temp}raw_mintemp_deaths.pdf", as(pdf) replace
 	restore
 
 	preserve
@@ -72,6 +85,9 @@ egen S = group(STATE)
 	areg deaths MIN_tmin_med i.YM, a(S) // smaller magnitude but still neg
 	areg deaths MIN_tmin_med i.YM if MONTH<5 | MONTH>10, a(S) // restrict to Nov-Apr (coldest 6 months), same results larger coef
 
+	g MIN_tmin_med_2=MIN_tmin_med*MIN_tmin_med
+	areg deaths MIN_tmin_med MIN_tmin_med_2 i.YM, a(S) // pos and neg for square term 
+
 	areg deaths MIN_tmin_med i.YEAR i.WEEKDAY i.MONTH, a(S)
 
 
@@ -79,6 +95,114 @@ egen S = group(STATE)
 
 **** FIRST IDEA :  TEMPERATURE GRADIENT FOR TREATED AND UNTREATED STATES (focus on 32 degrees)
 
+use "${loc}temp/full_data_test.dta", clear
+
+* a really simple version here: states with and without disconnection policies
+preserve
+	g policy=temp!=.
+	bysort STATE: egen check=sd(policy) 
+	tab STATE if check!=0
+	g mytemp=round(MIN_tmin_med)
+	collapse (sum) deaths if check==0, by(mytemp policy)
+	replace deaths=deaths/1000
+	reshape wide deaths, i(mytemp) j(policy)
+	g diff=deaths1-deaths0
+	tw (scatter deaths1 mytemp) (scatter deaths0 mytemp) (line diff mytemp) (lfit diff mytemp if mytemp<32, lc(gs8) lp(dash)) (lfit diff mytemp if mytemp>32, lc(gs8) lp(dash)) if mytemp>=0 & mytemp<=50, xli(32, lc(gs8) lp(dash)) xlab(0 32 "32ºF" 50) xti("Minimum temperature") yti("Deaths, 1000s") legend(order(1 "With disconnection policy" 2 "Without" 3 "Difference") r(1)) 
+	graph export  "${discfile}${temp}raw_mintemp_deaths_bypolicy.pdf", as(pdf) replace
+	** this looks odd... not quite what I would've expected 
+restore
+
+
+* now do something similar to what will did
+use "${loc}temp/full_data_test.dta", clear
+
+merge m:1 STATE YEAR using "${loc}input/state_pop.dta"
+keep if _merge==3
+drop _merge
+
+
+g policy=temp!=.
+bysort STATE: egen check=sd(policy) 
+keep if check==0
+
+drop policy check
+g dc32=1 if temp==32
+replace dc32=0 if temp==.
+drop if dc32==.
+
+
+egen S = group(STATE)
+
+
+egen YM=group(YEAR MONTH)
+egen full_date = group(YEAR MONTH WEEKDAY)
+
+
+g T = round(MIN_tmin_min)
+
+global M = 30
+
+replace T=T-32
+replace T=`=${M}' if T>=`=${M}'
+replace T=`=-${M}' if T<=`=-${M}'
+
+qui tab T, g(T_)
+foreach var of varlist T_* {
+			g `var'_no = `var'==1 & dc32==0
+			g `var'_yes = `var'==1 & dc32==1
+			drop `var'
+}
+
+ren T_31_no omit_no
+ren T_31_yes omit_yes
+
+gen ldeaths=log(deaths)
+gen rdeaths=100000*deaths/pop
+
+areg deaths T_* omit_* i.YM i.WEEKDAY, a(STATE) cluster(STATE) r 
+
+preserve
+
+	parmest, fast  
+	save "${loc}temp/temp_est.dta", replace
+
+	use "${loc}temp/temp_est.dta", clear
+		keep if regexm(parm,"_no")==1
+		g F=_n+1
+		replace F=F+1 if F>31
+		replace F=32 if F==63
+		ren estimate est_no
+		ren min95 min95_no
+		ren max95 max95_no
+		keep F est min max
+	save "${loc}temp/temp_est_no.dta", replace
+	
+	use "${loc}temp/temp_est.dta", clear
+		keep if regexm(parm,"_yes")==1
+		g F=_n+1
+		replace F=F+1 if F>31
+		replace F=32 if F==63
+		ren estimate est_yes
+		ren min95 min95_yes
+		ren max95 max95_yes
+		keep F est min max
+	save "${loc}temp/temp_est_yes.dta", replace
+	
+	use "${loc}temp/temp_est_no.dta", clear
+	merge 1:1 F using "${loc}temp/temp_est_yes.dta"
+	drop _merge
+
+	tw (line est_no F, lc(cranberry) lw(thick)) (line est_yes F, lc(navy) lw(thick)) (line min95_no F if F<32, lp(dash) lc(red)) (line min95_no F if F>32, lp(dash) lc(red)) (line max95_no F if F<32, lp(dash) lc(red)) (line max95_no F if F>32, lp(dash) lc(red)) (line min95_yes F if F<32, lp(dash) lc(midblue)) (line min95_yes F if F>32, lp(dash) lc(midblue)) (line max95_yes F if F<32, lp(dash) lc(midblue)) (line max95_yes F if F>32, lp(dash) lc(midblue)), legend(order(2 "States with policies" 1 "States without")) xti("Degrees Fahrenheit") xlab(2 "{&le} 2" 12 "12" 22 "22" 32 "32" 42 "42" 52 "52" 62 "{&ge} 62")
+	graph export  "${loc}temp/first_regs.pdf", as(pdf) replace
+	
+	erase "${loc}temp/temp_est.dta"
+	erase "${loc}temp/temp_est_no.dta"
+	erase "${loc}temp/temp_est_yes.dta"
+	
+restore
+
+
+*** will's code 
 use "${loc}temp/full_data_test.dta", clear
 
 egen f = max(temp), by(STATE)
