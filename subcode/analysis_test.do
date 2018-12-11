@@ -39,7 +39,8 @@ restore
 	g counter=1
 	collapse (sum) deaths counter, by(mytemp)
 	replace deaths=deaths/1000
-	tw (scatter deaths mytemp) (scatter counter mytemp, msize(vsmall)), xli(32, lc(gs8) lp(dash)) xlab(-50 0 32 "32ºF" 50 100) xti("Minimum temperature") yti("") legend(order(1 "Deaths, 1000s" 2 "Frequency"))	graph export  "${discfile}${temp}raw_mintemp_deaths.pdf", as(pdf) replace
+	tw (scatter deaths mytemp) (scatter counter mytemp, msize(vsmall)), xli(32, lc(gs8) lp(dash)) xlab(-50 0 32 "32ºF" 50 100) xti("Minimum temperature") yti("") legend(order(1 "Deaths, 1000s" 2 "Frequency"))	
+	graph export  "${discfile}${temp}raw_mintemp_deaths.pdf", as(pdf) replace
 	restore
 
 	preserve
@@ -88,6 +89,8 @@ restore
 	g MIN_tmin_med_2=MIN_tmin_med*MIN_tmin_med
 	areg deaths MIN_tmin_med MIN_tmin_med_2 i.YM, a(S) // pos and neg for square term 
 
+	
+	
 	areg deaths MIN_tmin_med i.YEAR i.WEEKDAY i.MONTH, a(S)
 
 
@@ -159,7 +162,7 @@ ren T_31_yes omit_yes
 gen ldeaths=log(deaths)
 gen rdeaths=100000*deaths/pop
 
-areg deaths T_* omit_* i.YM i.WEEKDAY, a(STATE) cluster(STATE) r 
+qui areg deaths T_* omit_* i.YM i.WEEKDAY, a(STATE) cluster(STATE) r 
 
 preserve
 
