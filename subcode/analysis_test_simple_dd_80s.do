@@ -1,6 +1,10 @@
-* analysis_test.do
 
-* cd /Users/williamviolette/disc/disc_code/subcode/
+
+
+* this program graphs an event study looking at days around the
+* time when the policies take effect (each year) and mortality for
+* treated states (with date-specific policies) and untreated states (without)
+
 
 set more off
 set matsize 10000
@@ -25,13 +29,7 @@ save "${loc}temp/cold_date_80s.dta", replace
 
 
 
-use "${mort}mort_age.dta", clear
-
-// reshape wide deaths, i(stateoc month day year) j(A)
-// drop if day==.
-// replace deaths0=0 if deaths0==.
-// replace deaths1=0 if deaths1==.
-// replace deaths2=0 if deaths2==.
+use "${loc}temp/mort_age.dta", clear
 
 replace deaths=0 if deaths==.
 
@@ -43,24 +41,21 @@ g date=mdy(month,day,year)
 drop if date==.
 duplicates drop stateoc date, force
 
-*drop if month_start!=11 & month_start!=.
+*drop if month_start!=11 & month_start!=. // get rid of states who have policies with different starting times? (keep them in control for now...)
 *drop if day_start!=15 & day_start!=.
 
-
 ** do enter dc period
-g start = month ==11 & day ==15
+g start = month ==11 & day ==15 // focus only on the most common start date (november 15th)
 g treat = month_start==11 & day_start==15
 
-global M = 30
+global M = 30 // days around starting event
 global idvar ="start"
 global groupvar = "stateoc"
 
 sort stateoc date
 
-
-egen deathst=sum(deaths), by(date stateoc)
+egen deathst=sum(deaths), by(date stateoc) // sum deaths for all age groups together (for some specifications)
 bys stateoc date: g dn=_n
-
 g ld=log(deathst+1)
 
 
@@ -130,19 +125,24 @@ program define graph_trend2
     	|| (line max95_yes time, lcolor(green) lpattern(dash) lwidth(med)) ///
     	|| (line min95_yes time, lcolor(green) lpattern(dash) lwidth(med)), ///
     	 graphregion(color(gs16)) plotregion(color(gs16)) xlabel(`=-${M}'(2)`=${M}') ///
-    	 ytitle("deaths")
-    	 graph export  "${loc}temp/trend_age.pdf", as(pdf) replace
+		ytitle("deaths for `4' people") legend(order(1 "untreated" 4 "treated")) ///
+		 xtitle("day relative to start date") title("policy start date and deaths for `4' people")
+    	 graph export  "${loc}temp/trend_age_`4'.pdf", as(pdf) replace
     	 erase "${loc}temp/temp_est.dta"
     	 erase "${loc}temp/temp_est_no.dta"
     restore
 end
 
 
-* graph_trend2 "ld" "keep if dn==1" "date"
+graph_trend2 "deaths" "keep if A==1" "date" young
 
-* graph_trend2 "deathst" "keep if dn==1" "date"
+graph_trend2 "deaths" "keep if A==2" "date" old
 
-* graph_trend2 "deaths" "keep if A==1" "date"
+graph_trend2 "deaths" "keep if A==0" "date" other
+
+graph_trend2 "deathst" "keep if dn==1" "date" all
+
+
 
 
 

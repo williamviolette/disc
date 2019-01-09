@@ -2,9 +2,9 @@
 
 
 global mort = "/Users/williamviolette/Downloads/mort/"
-global sc = "/Users/williamviolette/disc/disc_code/subcode/"
 
-global mort_clean_temp = 0
+
+global mort_clean_temp = 1
 global mort_age_temp = 1
 
 if $mort_clean_temp == 1 {
@@ -34,7 +34,7 @@ bys  ${varset}: g dn=_n
 keep if dn==1
 drop dn
 
-save "${mort}mort${yr}_temp.dta", replace
+save "${loc}temp/mort${yr}_temp.dta", replace
 
 }
 
@@ -47,7 +47,7 @@ if $mort_age_temp == 1 {
 
 forvalues r=1980/1988 {
 global yr = `r'
-use "${mort}mort${yr}_temp.dta", clear
+use "${loc}temp/mort${yr}_temp.dta", clear
 drop ic
 
 g A=0
@@ -64,23 +64,23 @@ bys  ${varset}: g dn=_n
 keep if dn==1
 drop dn deaths1
 
-save "${mort}mort${yr}_age_temp.dta", replace
+save "${loc}temp/mort${yr}_age_temp.dta", replace
 }
 
 
 forvalues r=1980/1988 {
 global yr = `r'
 if `r' == 1980 {
-use "${mort}mort${yr}_age_temp.dta", clear
+use "${loc}temp/mort${yr}_age_temp.dta", clear
 }
 else {
-append using "${mort}mort${yr}_age_temp.dta"
+append using "${loc}temp/mort${yr}_age_temp.dta"
 }
-erase "${mort}mort${yr}_age_temp.dta"
+erase "${loc}temp/mort${yr}_age_temp.dta"
 }
 
 
-save  "${mort}mort_age.dta", replace
+save  "${loc}temp/mort_age.dta", replace
 
 
 }
