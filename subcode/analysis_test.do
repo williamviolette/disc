@@ -1,6 +1,6 @@
 * analysis_test.do
 
-
+* cd /Users/williamviolette/disc/disc_code/subcode/
 
 set more off
 set matsize 10000
@@ -89,7 +89,7 @@ restore
 	g MIN_tmin_med_2=MIN_tmin_med*MIN_tmin_med
 	areg deaths MIN_tmin_med MIN_tmin_med_2 i.YM, a(S) // pos and neg for square term 
 
-	
+
 	
 	areg deaths MIN_tmin_med i.YEAR i.WEEKDAY i.MONTH, a(S)
 
@@ -114,6 +114,7 @@ preserve
 	graph export  "${discfile}${temp}raw_mintemp_deaths_bypolicy.pdf", as(pdf) replace
 	** this looks odd... not quite what I would've expected 
 restore
+
 
 
 * now do something similar to what will did
@@ -203,6 +204,116 @@ preserve
 	erase "${loc}temp/temp_est_yes.dta"
 	
 restore
+
+
+
+
+* repeat adrian's exercise looking separately between winter and summer
+use "${loc}temp/full_data_test.dta", clear
+
+merge m:1 STATE YEAR using "${loc}input/state_pop.dta"
+keep if _merge==3
+drop _merge
+
+
+g policy=temp!=.
+bysort STATE: egen check=sd(policy) 
+keep if check==0
+
+drop policy check
+g dc32=1 if temp==32
+replace dc32=0 if temp==.
+drop if dc32==.
+
+
+egen S = group(STATE)
+
+
+egen YM=group(YEAR MONTH)
+egen full_date = group(YEAR MONTH WEEKDAY)
+
+g winter=(MONTH<=4 | MONTH>=10)
+
+g T = round(MIN_tmin_mean)
+
+global M = 30
+
+replace T=T-32
+replace T=`=${M}' if T>=`=${M}'
+replace T=`=-${M}' if T<=`=-${M}'
+
+
+qui tab T, g(T_)
+foreach var of varlist T_* {
+			g `var'_no_winter = `var'==1 & dc32==0 & winter==1
+			g `var'_yes_winter = `var'==1 & dc32==1 & winter==1
+			g `var'_no_summer = `var'==1 & dc32==0 & winter==0
+			g `var'_yes_summer = `var'==1 & dc32==1 & winter==0
+			drop `var'
+}
+
+ren T_31_no_winter omit_no_winter
+ren T_31_yes_winter omit_yes_winter
+ren T_31_no_summer omit_no_summer
+ren T_31_yes_summer omit_yes_summer
+
+
+gen ldeaths=log(deaths)
+gen rdeaths=100000*deaths/pop
+
+qui areg ldeaths T_* omit_* i.YM i.WEEKDAY, a(STATE) cluster(STATE) r 
+
+preserve
+
+	parmest, fast  
+	save "${loc}temp/temp_est.dta", replace
+
+	foreach r in no yes {
+	foreach s in winter summer {
+	use "${loc}temp/temp_est.dta", clear
+		keep if regexm(parm,"_`r'")==1 & regexm(parm,"_`s'")==1
+		g F=_n+1
+		replace F=F+1 if F>31
+		replace F=32 if F==63
+		ren estimate est_`r'_`s'
+		ren min95 min95_`r'_`s'
+		ren max95 max95_`r'_`s'
+		keep F est min max
+	save "${loc}temp/temp_est_`r'_`s'.dta", replace
+	}
+	}
+	
+	
+	use "${loc}temp/temp_est_no_winter.dta", clear
+	merge 1:1 F using "${loc}temp/temp_est_yes_winter.dta"
+	drop _merge
+	merge 1:1 F using "${loc}temp/temp_est_no_summer.dta"
+	drop _merge
+	merge 1:1 F using "${loc}temp/temp_est_yes_summer.dta"
+	drop _merge
+	
+
+	global F_max = 40
+	global F_min = 25
+	tw 	(line est_no_winter F if F<=${F_max} & F>=${F_min}, lc(cranberry) lw(thick)) ///
+		(line est_yes_winter F if F<=${F_max} & F>=${F_min}, lc(navy) lw(thick)) ///
+	    (line est_no_summer F if F<=${F_max} & F>=${F_min}, lc(magenta) lw(thick)) ///
+		(line est_yes_summer F if F<=${F_max} & F>=${F_min}, lc(blue) lw(thick)), ///
+		xline(32) ///
+		legend(order(2 "States with policies: Winter" 1 "States without: Winter" 4 "States with policies: Summer" 3 "States without: Summer"))
+
+	graph export  "${loc}temp/first_regs_season.pdf", as(pdf) replace
+	
+	erase "${loc}temp/temp_est.dta"
+	erase "${loc}temp/temp_est_no_winter.dta"
+	erase "${loc}temp/temp_est_yes_winter.dta"
+	erase "${loc}temp/temp_est_no_summer.dta"
+	erase "${loc}temp/temp_est_yes_summer.dta"
+	
+restore
+
+
+
 
 
 *** will's code 
