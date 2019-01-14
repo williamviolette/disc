@@ -2,7 +2,7 @@
 
 set more off
 
-global loc =  "/Volumes/GoogleDrive/My Drive/disc_data/"
+* global loc =  "/Volumes/GoogleDrive/My Drive/disc_data/"
 
 * dates change : kentucky , connecticut , michigan , nebraska , new hampshire , new york , ohio , rhode island
 * temperatures don't seem to really change 
