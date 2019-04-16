@@ -23,8 +23,8 @@ format state %10s
 order state year
 sort state year
 
-save "${loc}input/dc_total.dta", replace
+save "${loc}input/dc_total_new.dta", replace
 
-
+saveold "${loc}input/dc_total.dta", replace
 
 

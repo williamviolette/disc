@@ -94,15 +94,14 @@ g stateoc = _n
 
 
 
+ren state statename
 
+merge 1:1 statename using "${loc}input/fips_state.dta"
+** no DC merge
+drop _merge
+ren statename state
 
-
-
-
-
-
-
-
+destring fipsst, replace force
 
 
 save "${loc}temp/input_82_temp_dates.dta", replace

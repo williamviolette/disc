@@ -76,7 +76,7 @@ write Montana "20 Days" "Third party" "No" "Yes" "Varies (10-30)" "None without 
 *** nothing for nebraska
 write Nevada "10 Days" "Yes" "No" "Yes" "Varies (5-17.50)" "No"
 write "New Hampshire" "14 Days" "Contact adult or leave sealed not with instructions" "2 months" "Depends" "Varies (10-30)" "None under 175 for non-heating and 300 for heating" "1980" "PUC"
-write "New Jersey" "7 Days" "Third Party" "Yes" "Yes" "Varies" "Dates for welfare or public assistance" "11/24/82" "BPU" "." "12/1" "3/15"
+write "New Jersey" "7 Days" "Third Party" "Yes" "Yes" "Varies" "Weather, Dates for welfare or public assistance" "11/24/82" "BPU" "." "12/1" "3/15"
 write "New Mexico" "15 Days" "Third Party" "1.5 months" "Yes" "Varies" "No"
 write "New York" "15 Days" "Third party" "No" "Yes" "Varies (5-10)" "Health concerns special notice" "10/19/81" "Statute" "." "11/1" "4/15"
 write "North Carolina" "10 Days" "Third party" "Maybe" "Yes" "Varies" "Elterly or handicapped who qualify for low-income energy assistance" "11/80" "Statute" "." "11/1" "3/31"
@@ -105,7 +105,14 @@ write Wyoming "7 Days" "Third party" "1.5 months" "Yes" "At cost" "Utility needs
 
 
 
+ren state statename
 
+merge 1:1 statename using "${loc}input/fips_state.dta"
+** no DC merge
+drop _merge
+ren statename state
+
+destring fipsst, replace force
 
 
 save "${loc}temp/input_82_temp.dta", replace

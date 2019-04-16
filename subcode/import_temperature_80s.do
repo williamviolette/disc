@@ -2,8 +2,8 @@
 
 cd "/Users/williamviolette/Downloads/ghcnd_hcn/"
 
-global fullimport = 1
-global tminfull   = 1
+global fullimport = 0
+global tminfull   = 0
 
 if $fullimport == 1 {
 
@@ -51,11 +51,14 @@ foreach file in `files' {
 	else {
 		append using "temp/`file'_80.dta"
 	}
+	erase "temp/`file'_80.dta"
 }
 
 save "temp/tmin_full_80.dta", replace
 
 }
+
+
 
 
 * 
@@ -83,7 +86,7 @@ save "temp/id_state.dta", replace
 
 use "temp/tmin_full_80.dta", clear
 
-	merge m:1 ID using "temp/id_state.dta"
+	merge m:1 ID using "${loc}input/stations.dta"
 	keep if _merge==3
 	drop _merge
 
@@ -91,21 +94,35 @@ use "temp/tmin_full_80.dta", clear
 	keep if _merge==3
 	drop _merge
 
+	g ID1 = substr(ID,1,3)
+	g ID2 = substr(ID,6,.)
+	destring ID2, replace force
+
+	merge m:1 ID1 ID2 using "${loc}input/int_stations_county.dta"
+	keep if _merge==3
+	drop _merge
+
+
 drop STATE ID
 ren NAME STATE
 
-egen tmin_med  = median(VALUE),  by(STATE YEAR MONTH DAY)
-egen tmin_mean = mean(VALUE), by(STATE YEAR MONTH DAY)
-egen tmin_min  = min(VALUE),  by(STATE YEAR MONTH DAY)
+egen tmin_med  = median(VALUE),  by(geoid10 STATE YEAR MONTH DAY)
+egen tmin_mean = mean(VALUE), by(geoid10 STATE YEAR MONTH DAY)
+egen tmin_min  = min(VALUE),  by(geoid10 STATE YEAR MONTH DAY)
 
 drop VALUE
-duplicates drop STATE YEAR MONTH DAY, force
+
+
+
+duplicates drop geoid10 STATE YEAR MONTH DAY, force
 
 foreach var of varlist tmin_* {
 	replace `var' = (`var'/10)*(9/5) + 32
 }
 
-save "/Volumes/GoogleDrive/My Drive/disc_data/input/min_temp_80.dta", replace
+destring geoid10, replace force
+
+save "/Volumes/GoogleDrive/My Drive/disc_data/input/min_temp_80_county.dta", replace
 
 
 

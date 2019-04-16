@@ -13,9 +13,11 @@ if $mort_clean_temp == 1 {
 
 forvalues r=1980/1988 {
 global yr = `r'
+
+*global yr = 1980
 use "${mort}mort${yr}.dta", clear
 
-keep stateoc monthdth daydth racer3 ager12 stateoc ucod metro
+keep stateoc monthdth daydth racer3 ager12 countyrs ucod metro
 
 g ic = substr(ucod,1,1)
 
@@ -25,7 +27,7 @@ ren daydth day
 destring stateoc month day ager12 racer3, replace force
 g city = metro=="1"
 
-global varset="stateoc year month day city ager12 racer3 ic"
+global varset="stateoc countyrs year month day city ager12 racer3 ic"
 keep $varset
 order $varset
 
@@ -54,7 +56,7 @@ g A=0
 replace A =2 if ager12>=10 & ager12<=11
 replace A =1 if ager12<=2
 
-global varset="stateoc year month day A"
+global varset="stateoc countyrs year month day A"
 keep $varset deaths
 order $varset deaths
 
