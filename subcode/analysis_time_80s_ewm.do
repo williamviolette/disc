@@ -135,12 +135,12 @@ egen deaths_all = rowtotal(deaths*)
 
 egen deaths_ewm = rowtotal(deaths9*)
 
-ren deaths0 deaths_young_oth
-ren deaths1 deaths_mid_oth
+ren deaths0 deaths_mid_oth
+ren deaths1 deaths_young_oth
 ren deaths2 deaths_old_oth
 
-ren deaths90 deaths_young_ewm
-ren deaths91 deaths_mid_ewm
+ren deaths90 deaths_mid_ewm
+ren deaths91 deaths_young_ewm
 ren deaths92 deaths_old_ewm
 
 g date=mdy(month,day,year)

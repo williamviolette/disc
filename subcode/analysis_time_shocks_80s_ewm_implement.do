@@ -1,47 +1,33 @@
 
 
-global state_prep = 0
 
-
-if $state_prep == 1 {
 
 use "${loc}input/full_ewm.dta", clear
+
 
 replace month_start_policy=1 if month_start_policy==.
 replace day_start_policy=1 if day_start_policy==.
 g policy_date = mdy(month_start_policy,day_start_policy,year_start_policy)
 replace policy_date = 3653  if policy_date==.
 
-g cold = f < 32
-
-foreach var of varlist deaths* {
-	g `var'_cold=`var'*cold
-}
-foreach var of varlist deaths* {
-	egen `var'_sum = sum(`var'), by(fipsst date)
-	replace `var'=`var'_sum
-	drop `var'_sum
-}
-drop f fipsco cold
-duplicates drop fipsst date, force
-
-save "${loc}input/states_ewm.dta", replace
-
-}
-
-
-
-
-use "${loc}input/states_ewm.dta", clear
-
-g year = yofd(date)
-g month =  month(date)
+g month = month(date)
 g day = day(date)
+
+
+
+sort fipsco date
+by fipsco: g f_l = f[_n-1]
+by fipsco: g f_l2 = f[_n-2]
+
+egen temp_month_m = mean(f), by(month fipsco)
+egen temp_month_sd = sd(f), by(month fipsco)
+
+
+
 
 	cap prog drop cut
 	prog def cut
-		sum `1', detail
-		egen cut_temp = cut(`1'), at(`=r(min)'(`2')`=r(max)')
+		egen cut_temp = cut(`1'), at(`2'(`3')`4')
 		drop `1'
 		ren cut_temp `1'
 	end
@@ -56,37 +42,77 @@ g day = day(date)
 	end
 
 
+	cap prog drop cutg
+	prog def cutg
+		egen `1'_cut = cut(`1'), at(`2'(`3')`4')
+	end
+
+
+	cap prog drop dmg
+	prog def dmg
+		cap drop m_temp
+		egen `2' = mean(`1'), by(`3' `4' `5')
+	end
+
+
+foreach var of varlist deaths_all deaths_ewm deaths_old_ewm {
+	dmg `var' `var'_date date
+	dmg `var' `var'_md fipsco month day
+	dmg `var' `var'_ym fipsco year month
+	dmg `var' `var'_fc f fipsco
+	g `var'_adj = `var' - `var'_date - `var'_md - `var'_ym - `var'_fc
+
+}
+
+
+
 
 cap prog drop splot
 prog def splot
 
 preserve 
+
 	sum `2', detail
 	global mean_o= "`=string(round(`=r(mean)',.001),"%12.2f")'" 
 
+	`10'
 
-	dm `2' date
-	dm `2' fipsst month
-	dm `2' fipsst year
+	keep if `9'>=`3' & `9'<=`4'
 
-	`7'
-
-	g start_date = mdy(month_`6',day_`6',year)
+	g year=yofd(date)
+	g start_date = mdy(month_`8',day_`8',year)
 
 	g T=date-start_date
 
-	cut T `5'
-	keep if T>=`3' & T<=`4'
+	keep if T>=`6' & T<=`7'
+
+
+	cut `9' `3' `5' `4'
+
+
+	g post = 0 if T>=`6'   &  T<0
+	replace post=1 if T>=0 & T<=`7'
 
 	g post_pol = (date>policy_date)
 
-	egen o = mean(`2'), by(T post_pol)
+	egen o = mean(`2'), by(`9' post post_pol)
 
-	bys T post_pol: g t_n=_n
+	bys `9' post post_pol: g t_n=_n
 
-	scatter o T if t_n==1 & post_pol==1, color(edkblue)  || ///
-	lpoly o T if t_n==1 & post_pol==1, color(edkblue)  ///
-	 xtitle("Time to Event") ytitle("Deaths (demeaned)")  xlabel(${tl}(5)${tu}) note("Mean Outcome : $mean_o ") legend(off)
+	global linetype = "lfit"
+
+	*global add_lines = $linetype o f if t_n==1 & post==0 & post_pol==0, color(red) || $linetype o f if t_n==1 & post==1 & post_pol==0, color(blue)  xline(32) || ///
+	*$linetype o f if t_n==1 & post==0 & post_pol==1, color(sand) || $linetype o f if t_n==1 & post==1 & post_pol==1, color(edkblue)  xline(32) /// 
+
+	* scatter o f if t_n==1 & post==0 & post_pol==0, color(red) || scatter o f if t_n==1 & post==1  & post_pol==0, color(blue) ||  ///
+	* scatter o f if t_n==1 & post==0 & post_pol==1, color(sand) || scatter o f if t_n==1 & post==1  & post_pol==1, color(edkblue)  ///
+	* legend(order(1 "Pre Season, Pre Policy" 2 "Post Season, Pre Policy"  3 "Pre Season, Post Policy" 4 "Post Season, Post Policy" )) xtitle("Fahrenheit") ytitle("Deaths (demeaned)") 
+	
+	*scatter o f if t_n==1 & post==0 & post_pol==0, color(red) || scatter o f if t_n==1 & post==1  & post_pol==0, color(blue) ||  ///
+
+	scatter o `9' if t_n==1 & post==0 & post_pol==1, color(sand) || scatter o `9' if t_n==1 & post==1  & post_pol==1, color(edkblue)  ||  ///
+	lpoly o `9' if t_n==1 & post==0 & post_pol==1, color(sand) || lpoly o `9' if t_n==1 & post==1  & post_pol==1, color(edkblue)  ///
+	legend(order(  1 "Pre Season" 2 "Post Season" )) xtitle("Fahrenheit") ytitle("Deaths (demeaned)") note("Mean Outcome : $mean_o ") 
 
 	graph export "${fig}`1'.pdf", as(pdf) replace
 
@@ -98,201 +124,73 @@ end
 global tl = -30
 global tu =  30
 
+global c_l = 20
+global c_u = 40
 
-splot "te_deaths_all" "deaths_all" $tl $tu 1 "start"
+global step = 1
 
-splot "te_deaths_old_ewm_cold" "deaths_old_ewm_cold" $tl $tu 1 "start"
+foreach r in 5 10 30 {
+	global tl = -`r'
+	global tu =  `r'
+	splot "tgrad_ewm_`r'd" "deaths_ewm_adj" $c_l $c_u $step $tl $tu start f
+	splot "tgrad_ewm_old_`r'd" "deaths_old_ewm_adj" $c_l $c_u $step $tl $tu start f
+	splot "tgrad_ewm_old_32_`r'd" "deaths_ewm_adj" $c_l $c_u $step $tl $tu start f "keep if temp==32"
+}
 
 
 
 
 
 
-cap prog drop splot_pre
-prog def splot_pre
 
-preserve 
 
+splot "tgrad_deaths_ewm_lag1" "deaths_old_ewm" $c_l $c_u $step $tl $tu start f "keep if f <= temp_month_m - 1*temp_month_sd"
 
-	sum `2', detail
-	global mean_o= "`=string(round(`=r(mean)',.001),"%12.2f")'" 
 
 
-	g post_pol = (date>policy_date)
 
-	* dm `2' month day post_pol
-	
-	*dm `2' fipsst year month
-	
-	dm `2' fipsst year
-	dm `2' date 
 
-	*dm `2' post_pol
-	
+splot "tgrad_deaths_ewm_lag2" "deaths_ewm" $c_l $c_u $step $tl $tu start f_l2 "keep if f_l2<= temp_month_m - 1*temp_month_sd"
 
-	egen min_post_pol=min(post_pol), by(fipsst)
-	keep if min_post_pol==0
 
-	`7'
 
-	g start_date = mdy(month_`6',day_`6',year)
 
-	g T=date-start_date
 
-	cut T `5'
-	keep if T>=`3' & T<=`4'
+splot "tgrad_deaths_ewm_lag1" "deaths_ewm" $c_l $c_u $step $tl $tu start f_l
 
-	egen o = mean(`2'), by(T post_pol)
+splot "tgrad_deaths_ewm_lag2" "deaths_ewm" $c_l $c_u $step $tl $tu start f_l2
 
-	bys T post_pol: g t_n=_n
 
-	global gtype = "lpoly"
 
-	 twoway $gtype o T if t_n==1 & post_pol==0, color(sand) || $gtype o T if t_n==1 & post_pol==1, color(edkblue) ||  ///
-	  scatter o T if t_n==1 & post_pol==0, color(sand) || scatter o T if t_n==1 & post_pol==1, color(edkblue)  ///
-	 legend(order(  1 "Pre Policy" 2 "Post Policy" )) xtitle("Time to Event") ytitle("Deaths (demeaned)") note("Mean Outcome : $mean_o ") 
 
-	* scatter o T if t_n==1 & post_pol==1, color(edkblue)  || ///
-	* lpoly o T if t_n==1 & post_pol==1, color(edkblue)  ///
-	* legend(order(  1 "Pre Policy"  )) xtitle("Time to Event") ytitle("Deaths (demeaned)")  xlabel(${tl}(5)${tu})
 
-	graph export "${fig}`1'.pdf", as(pdf) replace
+splot "tgrad_deaths_all" "deaths_all" $c_l $c_u $step $tl $tu start f
 
-restore 
-end
+splot "tgrad_deaths_all_lag1" "deaths_all" $c_l $c_u $step $tl $tu start f_l
 
+splot "tgrad_deaths_all_lag2" "deaths_all" $c_l $c_u $step $tl $tu start f_l2
 
 
-global tl = -80
-global tu =  80
 
 
-splot_pre "te_deaths_all" "deaths_all" $tl $tu 5 "start"
 
 
-splot_pre "te_deaths_old_ewm" "deaths_old_oth" $tl $tu 5 "end"
+splot "tgrad_deaths_all" "deaths_old" $c_l $c_u $step $tl $tu end f "keep if temp==32"
 
 
+splot "tgrad_deaths_all" "deaths_old_ewm" $c_l $c_u $step $tl $tu end f "keep if temp==32"
 
-splot_pre "te_deaths_old_ewm" "deaths_all" $tl $tu 1 "end"
 
+splot "tgrad_deaths_all" "deaths_all" $c_l $c_u $step $tl $tu end f "keep if temp==32"
 
 
 
-splot "te_deaths_old_ewm" "deaths_all" $tl $tu 1 "end"
+splot "tgrad_deaths_all" "deaths_all" $c_l $c_u $step $tl $tu end "keep if temp==32"
 
 
-splot "te_deaths_old_ewm" "deaths_young_oth" $tl $tu 1 "end"
 
-splot "te_deaths_old_ewm" "deaths_old_ewm" $tl $tu 1 "end"
 
-
-splot "te_deaths_old_ewm" "deaths_old_oth" $tl $tu 1 "end"
-
-
-
-splot "te_deaths_old_ewm" "deaths_mid_oth" $tl $tu 4 "end"
-
-
-
-splot "te_deaths_old_ewm" "deaths_old_ewm_cold" $tl $tu 4 "end"
-
-
-
-splot "te_deaths_old_ewm" "deaths_ewm" $tl $tu 4 "end"
-
-
-
-
-
-
-cap prog drop splot_cd
-prog def splot_cd
-
-preserve 
-
-	dm `2' date
-	dm `2' fipsst month day
-	dm `2' fipsst year
-
-
-	dm `2'_cold date
-	dm `2'_cold fipsst month day
-	dm `2'_cold fipsst year
-
-	`6'
-
-	g start_date = mdy(month_start,day_start,year)
-
-	g T=date-start_date
-
-	cut T `5'
-	keep if T>=`3' & T<=`4'
-
-	g post_pol = (date>policy_date)
-
-	egen o = mean(`2'), by(T post_pol)
-	egen o_cold = mean(`2'_cold), by(T post_pol)
-
-	bys T post_pol: g t_n=_n
-
-	g od = o_cold/o
-
-	* scatter o T if t_n==1 & post_pol==0, color(sand) || scatter o T if t_n==1 & post_pol==1, color(edkblue)  ///
-	* legend(order(  1 "Pre Policy" 2 "Post Policy" )) xtitle("Time to Event") ytitle("Deaths (demeaned)") 
-
-	scatter od T if t_n==1 & post_pol==1, color(edkblue)  || ///
-	lpoly od T if t_n==1 & post_pol==1, color(edkblue)  ///
-	legend(order(  1 "Pre Policy"  )) xtitle("Time to Event") ytitle("Deaths (demeaned)") 
-
-	graph export "${fig}`1'.pdf", as(pdf) replace
-
-restore 
-
-end
-
-
-
-global tl = -20
-global tu =  20
-
-
-splot_cd "te_deaths_old_ewm" "deaths_ewm" $tl $tu 2
-
-
-
-
-
-
-splot "te_deaths_old_ewm" "deaths_all" $tl $tu 4
-
-
-
-splot "te_deaths_old_ewm" "deaths_old_ewm_cold" $tl $tu 2
-
-
-
-
-
-splot "te_deaths_old_ewm" "deaths_all_cold" $tl $tu 1
-
-
-
-
-
-splot "te_deaths_ewm" "deaths_ewm" $tl $tu 4
-
-
-splot "te_deaths_ewm_cold" "deaths_ewm_cold" $tl $tu 4
-
-
-
-
-
-
-
-
-splot "tgrad_deaths_all" "deaths_all" $c_l $c_u $step $tl $tu "keep if temp==32"
+splot "tgrad_deaths_all" "deaths_all" $c_l $c_u $step $tl $tu end "keep if temp==32"
 
 
 

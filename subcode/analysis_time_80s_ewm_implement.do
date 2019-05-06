@@ -4,6 +4,10 @@
 
 use "${loc}input/full_ewm.dta", clear
 
+sort fipsco date
+by fipsco: g f_l = f[_n-1]
+by fipsco: g f_l2 = f[_n-2]
+
 
 replace month_start_policy=1 if month_start_policy==.
 replace day_start_policy=1 if day_start_policy==.
@@ -39,14 +43,19 @@ prog def splot
 
 preserve 
 
+	sum `2', detail
+	global mean_o= "`=string(round(`=r(mean)',.001),"%12.2f")'" 
+
+
 	dm `2' date
-	dm `2' fipsco year month
+	dm `2' fipsco month
+	dm `2' fipsco year
 
-	`9'
-	keep if f>=`3' & f<=`4'
+	`10'
+	keep if `9'>=`3' & `9'<=`4'
 
 
-	cut f `3' `5' `4'
+	cut `9' `3' `5' `4'
 
 	g year=yofd(date)
 	g start_date = mdy(month_`8',day_`8',year)
@@ -63,9 +72,9 @@ preserve
 
 	g post_pol = (date>policy_date)
 
-	egen o = mean(`2'), by(f post post_pol)
+	egen o = mean(`2'), by(`9' post post_pol)
 
-	bys f post post_pol: g t_n=_n
+	bys `9' post post_pol: g t_n=_n
 
 	global linetype = "lfit"
 
@@ -77,10 +86,10 @@ preserve
 	* legend(order(1 "Pre Season, Pre Policy" 2 "Post Season, Pre Policy"  3 "Pre Season, Post Policy" 4 "Post Season, Post Policy" )) xtitle("Fahrenheit") ytitle("Deaths (demeaned)") 
 	
 	*scatter o f if t_n==1 & post==0 & post_pol==0, color(red) || scatter o f if t_n==1 & post==1  & post_pol==0, color(blue) ||  ///
-	
-	scatter o f if t_n==1 & post==0 & post_pol==1, color(sand) || scatter o f if t_n==1 & post==1  & post_pol==1, color(edkblue)  ||  ///
-	lpoly o f if t_n==1 & post==0 & post_pol==1, color(sand) || lpoly o f if t_n==1 & post==1  & post_pol==1, color(edkblue)  ///
-	legend(order(  1 "Pre Season, Post Policy" 2 "Post Season, Post Policy" )) xtitle("Fahrenheit") ytitle("Deaths (demeaned)") 
+
+	scatter o `9' if t_n==1 & post==0 & post_pol==1, color(sand) || scatter o `9' if t_n==1 & post==1  & post_pol==1, color(edkblue)  ||  ///
+	lpoly o `9' if t_n==1 & post==0 & post_pol==1, color(sand) || lpoly o `9' if t_n==1 & post==1  & post_pol==1, color(edkblue)  ///
+	legend(order(  1 "Pre Season" 2 "Post Season" )) xtitle("Fahrenheit") ytitle("Deaths (demeaned)") note("Mean Outcome : $mean_o ") 
 
 	graph export "${fig}`1'.pdf", as(pdf) replace
 
@@ -89,29 +98,43 @@ restore
 end
 
 
-global tl = -7
-global tu =  7
+global tl = -30
+global tu =  30
 
 global c_l = 20
 global c_u = 50
 
 global step = 1
 
-cap drop deaths_old
-g deaths_old = deaths_old_ewm + deaths_old_oth
 
-splot "tgrad_deaths_all" "deaths_old" $c_l $c_u $step $tl $tu end
-
+* cap drop deaths_old
+* g deaths_old = deaths_old_ewm + deaths_old_oth
 
 
+splot "tgrad_deaths_all" "deaths_all" $c_l $c_u $step $tl $tu start f
 
-splot "tgrad_deaths_all" "deaths_old" $c_l $c_u $step $tl $tu end "keep if temp==32"
+splot "tgrad_deaths_all_lag1" "deaths_all" $c_l $c_u $step $tl $tu start f_l
+
+splot "tgrad_deaths_all_lag2" "deaths_all" $c_l $c_u $step $tl $tu start f_l2
 
 
-splot "tgrad_deaths_all" "deaths_old_ewm" $c_l $c_u $step $tl $tu end "keep if temp==32"
+splot "tgrad_deaths_ewm" "deaths_ewm" $c_l $c_u $step $tl $tu start f
+
+splot "tgrad_deaths_ewm_lag1" "deaths_ewm" $c_l $c_u $step $tl $tu start f_l
+
+splot "tgrad_deaths_ewm_lag2" "deaths_ewm" $c_l $c_u $step $tl $tu start f_l2
 
 
-splot "tgrad_deaths_all" "deaths_all" $c_l $c_u $step $tl $tu end "keep if temp==32"
+
+
+
+splot "tgrad_deaths_all" "deaths_old" $c_l $c_u $step $tl $tu end f "keep if temp==32"
+
+
+splot "tgrad_deaths_all" "deaths_old_ewm" $c_l $c_u $step $tl $tu end f "keep if temp==32"
+
+
+splot "tgrad_deaths_all" "deaths_all" $c_l $c_u $step $tl $tu end f "keep if temp==32"
 
 
 
